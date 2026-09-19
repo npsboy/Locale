@@ -25,34 +25,39 @@ module.exports = async (req, res) => {
   const dateKey = todayKey();
   const lockKey = `lock:${dateKey}`;
 
-  const cached = await kv.get(dispatchKey(dateKey));
-  if (cached) {
-    sendDispatch(res, dateKey, cached);
-    return;
-  }
-
-  const gotLock = await kv.set(lockKey, '1', { nx: true, ex: LOCK_TTL_SECONDS });
-  if (gotLock) {
-    try {
-      const dispatch = await generateAndStore(dateKey);
-      sendDispatch(res, dateKey, dispatch);
-    } catch (e) {
-      console.error('[api/dispatch] generation failed:', e.message);
-      res.status(503).json({ error: 'no-puzzle-today', dateKey });
-    } finally {
-      await kv.del(lockKey);
-    }
-    return;
-  }
-
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    await sleep(POLL_INTERVAL_MS);
-    const value = await kv.get(dispatchKey(dateKey));
-    if (value) {
-      sendDispatch(res, dateKey, value);
+  try {
+    const cached = await kv.get(dispatchKey(dateKey));
+    if (cached) {
+      sendDispatch(res, dateKey, cached);
       return;
     }
+
+    const gotLock = await kv.set(lockKey, '1', { nx: true, ex: LOCK_TTL_SECONDS });
+    if (gotLock) {
+      try {
+        const dispatch = await generateAndStore(dateKey);
+        sendDispatch(res, dateKey, dispatch);
+      } catch (e) {
+        console.error('[api/dispatch] generation failed:', e.stack || e.message);
+        res.status(503).json({ error: 'no-puzzle-today', dateKey });
+      } finally {
+        await kv.del(lockKey);
+      }
+      return;
+    }
+
+    const deadline = Date.now() + POLL_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      await sleep(POLL_INTERVAL_MS);
+      const value = await kv.get(dispatchKey(dateKey));
+      if (value) {
+        sendDispatch(res, dateKey, value);
+        return;
+      }
+    }
+    res.status(503).json({ error: 'Still finding today\'s story — try again shortly.', dateKey });
+  } catch (e) {
+    console.error('[api/dispatch] unexpected failure:', e.stack || e.message);
+    res.status(500).json({ error: e.message, stack: e.stack });
   }
-  res.status(503).json({ error: 'Still finding today\'s story — try again shortly.', dateKey });
 };

@@ -8,23 +8,23 @@ const { isAuthorizedCron } = require('../../lib/cronAuth');
 // briefly down). Same logic, just a second automatic shot before the day
 // falls back entirely on api/dispatch.js's on-demand generation.
 module.exports = async (req, res) => {
-  if (!isAuthorizedCron(req)) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-
-  const dateKey = todayKey();
-  const existing = await kv.get(dispatchKey(dateKey));
-  if (existing) {
-    res.status(200).json({ skipped: true, dateKey });
-    return;
-  }
-
   try {
+    if (!isAuthorizedCron(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const dateKey = todayKey();
+    const existing = await kv.get(dispatchKey(dateKey));
+    if (existing) {
+      res.status(200).json({ skipped: true, dateKey });
+      return;
+    }
+
     await generateAndStore(dateKey);
     res.status(200).json({ ok: true, dateKey });
   } catch (e) {
-    console.error('[cron/retry-daily] failed:', e.message);
-    res.status(500).json({ error: e.message, dateKey });
+    console.error('[cron/retry-daily] failed:', e.stack || e.message);
+    res.status(500).json({ error: e.message, stack: e.stack });
   }
 };
