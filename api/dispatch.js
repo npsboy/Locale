@@ -58,6 +58,6 @@ module.exports = async (req, res) => {
     res.status(503).json({ error: 'Still finding today\'s story — try again shortly.', dateKey });
   } catch (e) {
     console.error('[api/dispatch] unexpected failure:', e.stack || e.message);
-    res.status(500).json({ error: e.message, stack: e.stack });
+    res.status(500).json({ error: e.message });
   }
 };

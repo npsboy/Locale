@@ -25,6 +25,6 @@ module.exports = async (req, res) => {
     res.status(200).json({ ok: true, dateKey });
   } catch (e) {
     console.error('[cron/retry-daily] failed:', e.stack || e.message);
-    res.status(500).json({ error: e.message, stack: e.stack });
+    res.status(500).json({ error: e.message });
   }
 };
