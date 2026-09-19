@@ -1,4 +1,4 @@
-# Locale
+![Locale](public/assets/locale-banner.png)
 
 A GeoGuessr-style daily game: read a real, live Indian local news dispatch with the place name redacted, and guess where it happened.
 
