@@ -2,6 +2,8 @@
 
 A GeoGuessr-style daily game: read a real, live Indian local news dispatch with the place name redacted, and guess where it happened.
 
+[See this working](https://locale.npsboy.net/) <br> <br>
+
 ## How to play
 
 1. Each day there's one dispatch — a real excerpt from a live Indian news story, with the town/city name blacked out.
