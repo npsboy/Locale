@@ -16,7 +16,7 @@
   let locked = false;
   let currentDispatch = null;
 
-  const map = L.map('map', { worldCopyJump: true, zoomControl: false }).setView([22.5, 80], 5);
+  const map = L.map('map', { worldCopyJump: true, zoomControl: false });
   // Standard OSM tiles label places in their local script (Hindi, Tamil,
   // Bengali, etc.), pulled from each place's local `name` tag. Esri's basemap
   // renders place labels in English worldwide, so use that instead to keep
@@ -33,6 +33,7 @@
     maxZoom: 8,
   });
   const INDIA_BOUNDS = L.latLngBounds([6.5, 68.0], [37.5, 97.5]);
+  map.fitBounds(INDIA_BOUNDS, { padding: [10, 10] });
 
   const sourceNameEl = document.getElementById('sourceName');
   const dispatchDateEl = document.getElementById('dispatchDate');
