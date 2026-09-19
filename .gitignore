@@ -12,3 +12,8 @@ Thumbs.db
 dist/
 build/
 coverage/
+
+.vercel
+
+.vercel
+.env*

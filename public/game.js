@@ -1,6 +1,8 @@
 (function () {
-  const MAX_SCORE = 5000;
-  const DECAY_KM = 300; // how forgiving the scoring curve is
+  const DECAY_KM = 300; // shapes the curve between the hot/cold endpoints below
+  const COLD_KM = 1500; // guesses this far (or farther) are all equally "coldest"
+  const MAX_ATTEMPTS = 5;
+  const WIN_KM = 50; // guess within this radius of the true point wins; also the "hottest" gauge distance
   const PLAYED_PREFIX = 'locale:played:';
   const STREAK_KEY = 'locale:streak';
   const STREAK_DATE_KEY = 'locale:streakDate';
@@ -9,6 +11,8 @@
   let guessMarker = null;
   let answerMarker = null;
   let guessLine = null;
+  let pastGuessMarkers = [];
+  let attempts = []; // { lat, lng, km }
   let locked = false;
   let currentDispatch = null;
 
@@ -36,9 +40,15 @@
   });
   const answerIcon = L.divIcon({
     className: 'answer-pin',
-    html: '<div style="font-size:28px;line-height:1;">🎯</div>',
+    html: '<span class="material-symbols-outlined" style="font-size:28px;line-height:1;color:#ff1a1a;">my_location</span>',
     iconSize: [28, 28],
     iconAnchor: [14, 28],
+  });
+  const pastGuessIcon = L.divIcon({
+    className: 'past-guess-pin',
+    html: '<div style="font-size:18px;line-height:1;opacity:0.45;">📍</div>',
+    iconSize: [18, 18],
+    iconAnchor: [9, 18],
   });
 
   const storyText = document.getElementById('storyText');
@@ -50,6 +60,8 @@
   const totalScoreEl = document.getElementById('totalScore');
   const streakEl = document.getElementById('streakVal');
   const resetPinBtn = document.getElementById('resetPinBtn');
+  const gaugeMarkers = document.getElementById('gaugeMarkers');
+  const distanceBadge = document.getElementById('distanceBadge');
 
   function haversineKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -62,10 +74,6 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  function scoreForDistance(km) {
-    return Math.round(MAX_SCORE * Math.exp(-km / DECAY_KM));
-  }
-
   function verdictFor(km) {
     if (km < 15) return { label: "Bullseye! 🎯", tone: 'good' };
     if (km < 75) return { label: "Scarily close! 🔥", tone: 'good' };
@@ -73,6 +81,10 @@
     if (km < 700) return { label: "Right general vibe 🙃", tone: 'mid' };
     if (km < 1500) return { label: "Well... it's still India 🇮🇳", tone: 'bad' };
     return { label: "You basically guessed a different country's worth of distance 😅", tone: 'bad' };
+  }
+
+  function toneColor(tone) {
+    return tone === 'good' ? 'var(--good)' : tone === 'mid' ? '#b8860b' : 'var(--bad)';
   }
 
   // Mirrors the server's 6:00 AM IST rollover (lib/dateKey.js) just enough
@@ -108,6 +120,12 @@
     return newStreak;
   }
 
+  function resetStreak(dateKey) {
+    localStorage.setItem(STREAK_DATE_KEY, dateKey);
+    localStorage.setItem(STREAK_KEY, '0');
+    return 0;
+  }
+
   async function fetchDispatch() {
     const res = await fetch('/api/dispatch', { cache: 'no-store' });
     const data = await res.json();
@@ -122,33 +140,131 @@
     guessBtn.disabled = true;
   }
 
-  function drawResult(story, guessLat, guessLng, km, score) {
-    guessLatLng = { lat: guessLat, lng: guessLng };
-    guessMarker = L.marker(guessLatLng, { icon: guessIcon }).addTo(map);
-    answerMarker = L.marker([story.lat, story.lng], { icon: answerIcon }).addTo(map);
-    guessLine = L.polyline([guessLatLng, [story.lat, story.lng]], {
-      color: '#b8342f', weight: 3, dashArray: '6 6'
-    }).addTo(map);
+  function clearBoard() {
+    document.getElementById('mapArea').classList.remove('showing-answer');
+    if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
+    if (answerMarker) { map.removeLayer(answerMarker); answerMarker = null; }
+    if (guessLine) { map.removeLayer(guessLine); guessLine = null; }
+    pastGuessMarkers.forEach((m) => map.removeLayer(m));
+    pastGuessMarkers = [];
+    attempts = [];
+    guessLatLng = null;
+    gaugeMarkers.innerHTML = '';
+    distanceBadge.classList.add('hidden');
+    distanceBadge.textContent = '';
+  }
 
-    const bounds = L.latLngBounds([guessLatLng, [story.lat, story.lng]]);
+  function updateDistanceBadge(km) {
+    distanceBadge.textContent = `${Math.round(km).toLocaleString('en-IN')} km away`;
+    distanceBadge.classList.remove('hidden');
+  }
+
+  function markPastGuess(latlng, km, attemptNumber) {
+    const marker = L.marker(latlng, { icon: pastGuessIcon }).addTo(map);
+    marker.bindTooltip(`Guess ${attemptNumber}: ${Math.round(km).toLocaleString('en-IN')} km away`, {
+      direction: 'top',
+    });
+    pastGuessMarkers.push(marker);
+  }
+
+  // Same exponential curve used for scoring, so the gauge's "hot" end
+  // lights up in step with how the score actually grows as km shrinks.
+  // Clamped so WIN_KM is full-hot and COLD_KM (or farther) is full-cold.
+  const HOT_RAW = Math.exp(-WIN_KM / DECAY_KM);
+  const COLD_RAW = Math.exp(-COLD_KM / DECAY_KM);
+  function proximityFor(km) {
+    if (km <= WIN_KM) return 1;
+    if (km >= COLD_KM) return 0;
+    const raw = Math.exp(-km / DECAY_KM);
+    return (raw - COLD_RAW) / (HOT_RAW - COLD_RAW);
+  }
+
+  function renderGauge() {
+    gaugeMarkers.innerHTML = '';
+    attempts.forEach((a, i) => {
+      const marker = document.createElement('div');
+      marker.className = 'gauge-marker' + (i === attempts.length - 1 ? ' latest' : '');
+      marker.style.top = `${(1 - proximityFor(a.km)) * 100}%`;
+      marker.title = `Guess ${i + 1}: ${Math.round(a.km).toLocaleString('en-IN')} km away`;
+
+      const tri = document.createElement('span');
+      tri.className = 'gauge-tri';
+      const num = document.createElement('span');
+      num.className = 'gauge-num';
+      num.textContent = String(i + 1);
+
+      marker.appendChild(tri);
+      marker.appendChild(num);
+      gaugeMarkers.appendChild(marker);
+    });
+  }
+
+  function updateAttemptsUI() {
+    const left = MAX_ATTEMPTS - attempts.length;
+    storyKicker.textContent = `LIVE DISPATCH — LOCATION REDACTED (${left} guess${left === 1 ? '' : 'es'} left)`;
+  }
+
+  function showAttemptFeedback(km) {
+    const left = MAX_ATTEMPTS - attempts.length;
+    const verdict = verdictFor(km);
+    resultInline.classList.remove('hidden');
+    resultHeadline.textContent = `${Math.round(km).toLocaleString('en-IN')} km away`;
+    resultHeadline.style.color = toneColor(verdict.tone);
+    resultDetail.innerHTML = `${verdict.label} ${left} guess${left === 1 ? '' : 'es'} left — click the map to try again.`;
+    updateAttemptsUI();
+  }
+
+  function drawResult(story, won, bestKm, guessCount) {
+    const last = attempts[attempts.length - 1];
+    document.getElementById('mapArea').classList.add('showing-answer');
+    answerMarker = L.marker([story.lat, story.lng], { icon: answerIcon, zIndexOffset: 1000 }).addTo(map);
+    if (last) {
+      guessLine = L.polyline([[last.lat, last.lng], [story.lat, story.lng]], {
+        color: '#b8342f', weight: 3, dashArray: '6 6'
+      }).addTo(map);
+    }
+
+    const bounds = L.latLngBounds([[story.lat, story.lng], ...attempts.map((a) => [a.lat, a.lng])]);
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9 });
 
     storyKicker.textContent = 'DISPATCH — LOCATION REVEALED';
     storyText.innerHTML = story.excerpt.replace(/█+/g, `<strong class="revealed">${story.place}</strong>`);
 
-    const verdict = verdictFor(km);
-    resultHeadline.textContent = `You were ${Math.round(km).toLocaleString('en-IN')} km away!`;
-    resultHeadline.style.color = verdict.tone === 'good' ? 'var(--good)' : verdict.tone === 'mid' ? '#b8860b' : 'var(--bad)';
-
     const sourceLine = story.link
       ? ` <a href="${story.link}" target="_blank" rel="noopener noreferrer">Read the real story${story.source ? ` (${story.source})` : ''} →</a>`
       : '';
-    resultDetail.innerHTML = `${verdict.label} It was <strong>${story.place}</strong>, earning <span class="score-pop">+${score}</span> points.${sourceLine}`;
+
+    if (won) {
+      resultHeadline.textContent = `You found it in ${guessCount} guess${guessCount === 1 ? '' : 'es'}! 🎯`;
+      resultHeadline.style.color = 'var(--good)';
+      resultDetail.innerHTML = `It was <strong>${story.place}</strong>.${sourceLine}`;
+    } else {
+      resultHeadline.textContent = `Out of guesses! Best: ${Math.round(bestKm).toLocaleString('en-IN')} km away`;
+      resultHeadline.style.color = toneColor(verdictFor(bestKm).tone);
+      resultDetail.innerHTML = `It was <strong>${story.place}</strong>.${sourceLine}`;
+    }
 
     resultInline.classList.remove('hidden');
     guessBtn.disabled = true;
     guessBtn.style.display = 'none';
-    totalScoreEl.textContent = score;
+    totalScoreEl.textContent = won ? `Guessed in ${guessCount}` : "Missed it :(";
+  }
+
+  function finishGame(story, won) {
+    locked = true;
+    const bestKm = Math.min(...attempts.map((a) => a.km));
+    const guessCount = attempts.length;
+    const newStreak = won ? bumpStreak(story.dateKey) : resetStreak(story.dateKey);
+    streakEl.textContent = newStreak;
+
+    localStorage.setItem(PLAYED_PREFIX + story.dateKey, JSON.stringify({
+      attempts, finished: true, won, bestKm, guessCount,
+    }));
+
+    drawResult(story, won, bestKm, guessCount);
+
+    const storyArea = document.getElementById('storyArea');
+    storyArea.scrollTop = storyArea.scrollHeight;
   }
 
   function onMapClick(e) {
@@ -171,22 +287,29 @@
 
   function submitGuess() {
     if (!guessLatLng || locked || !currentDispatch) return;
-    locked = true;
 
     const story = currentDispatch;
     const km = haversineKm(guessLatLng.lat, guessLatLng.lng, story.lat, story.lng);
-    const score = scoreForDistance(km);
-    const newStreak = bumpStreak(story.dateKey);
-    streakEl.textContent = newStreak;
+    attempts.push({ lat: guessLatLng.lat, lng: guessLatLng.lng, km });
+    markPastGuess(guessLatLng, km, attempts.length);
+    renderGauge();
+    updateDistanceBadge(km);
 
-    localStorage.setItem(PLAYED_PREFIX + story.dateKey, JSON.stringify({
-      guessLat: guessLatLng.lat, guessLng: guessLatLng.lng, km, score,
-    }));
+    if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
+    guessLatLng = null;
+    guessBtn.disabled = true;
 
-    drawResult(story, guessLatLng.lat, guessLatLng.lng, km, score);
+    const won = km <= WIN_KM;
+    const outOfTries = attempts.length >= MAX_ATTEMPTS;
 
-    const storyArea = document.getElementById('storyArea');
-    storyArea.scrollTop = storyArea.scrollHeight;
+    if (won || outOfTries) {
+      finishGame(story, won);
+    } else {
+      showAttemptFeedback(km);
+      localStorage.setItem(PLAYED_PREFIX + story.dateKey, JSON.stringify({
+        attempts, finished: false,
+      }));
+    }
   }
 
   function showNoPuzzle() {
@@ -202,6 +325,7 @@
     resultInline.classList.add('hidden');
     storyText.classList.remove('hidden');
     setLoadingState('Pulling today\'s real Indian local news dispatch and redacting the place name...');
+    clearBoard();
 
     let dispatch;
     try {
@@ -220,18 +344,32 @@
 
     if (playedRaw) {
       const played = JSON.parse(playedRaw);
-      locked = true;
-      guessBtn.disabled = true;
-      drawResult(dispatch, played.guessLat, played.guessLng, played.km, played.score);
+      attempts = played.attempts || [];
+      attempts.forEach((a, i) => markPastGuess({ lat: a.lat, lng: a.lng }, a.km, i + 1));
+      renderGauge();
+      if (attempts.length) updateDistanceBadge(attempts[attempts.length - 1].km);
+
+      if (played.finished) {
+        locked = true;
+        guessBtn.disabled = true;
+        drawResult(dispatch, played.won, played.bestKm, played.guessCount || played.attempts.length);
+      } else {
+        locked = false;
+        storyKicker.textContent = dispatch.excerpt ? 'LIVE DISPATCH — LOCATION REDACTED' : '';
+        storyText.innerHTML = dispatch.excerpt.replace(/█+/g, '<strong>██████</strong>');
+        guessBtn.onclick = submitGuess;
+        guessBtn.disabled = true;
+        updateAttemptsUI();
+      }
       return;
     }
 
     locked = false;
-    storyKicker.textContent = 'LIVE DISPATCH — LOCATION REDACTED';
+    storyKicker.textContent = `LIVE DISPATCH — LOCATION REDACTED (${MAX_ATTEMPTS} guesses left)`;
     storyText.innerHTML = dispatch.excerpt.replace(/█+/g, '<strong>██████</strong>');
     guessBtn.onclick = submitGuess;
     guessBtn.disabled = true;
-    totalScoreEl.textContent = '0';
+    totalScoreEl.textContent = '';
   }
 
   startGame();

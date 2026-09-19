@@ -7,6 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📍</text></svg>" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Special+Elite&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=my_location" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -32,6 +33,13 @@
       <!-- map -->
       <div class="ov" id="mapArea">
         <div id="map"></div>
+        <div id="distanceBadge" class="hidden"></div>
+      </div>
+
+      <!-- cold/hot proximity gauge -->
+      <div class="ov" id="gaugeWrap">
+        <div id="gaugeTrack"></div>
+        <div id="gaugeMarkers"></div>
       </div>
 
       <!-- invisible hotspots over the baked-in buttons -->
@@ -41,7 +49,7 @@
       <button class="ov hotspot" id="guessBtn" disabled aria-label="Submit guess"></button>
 
       <!-- score / streak -->
-      <div class="ov stat-value" id="totalScore">0</div>
+      <div class="ov stat-value" id="totalScore"></div>
       <div class="ov stat-value" id="streakVal">0</div>
     </div>
   </div>

@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "GeoGuessr-style game: guess the Indian town behind a redacted live local news dispatch.",
   "scripts": {
-    "dev": "vercel dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
