@@ -21,10 +21,18 @@
   // Bengali, etc.), pulled from each place's local `name` tag. Esri's basemap
   // renders place labels in English worldwide, so use that instead to keep
   // every location on the map in English.
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+  const labelledTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
     attribution: '&copy; OpenStreetMap contributors, Esri, HERE, Garmin, FAO, NOAA, USGS',
     maxZoom: 18,
   }).addTo(map);
+  // Label-free basemap used only when revealing the answer, so the only
+  // place name visible on the map is the one we add ourselves. Same public
+  // Esri service as the labelled layer above, just a style with no place names.
+  const unlabelledTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri, HERE, Garmin, FAO, NOAA, USGS',
+    maxZoom: 8,
+  });
+  const INDIA_BOUNDS = L.latLngBounds([6.5, 68.0], [37.5, 97.5]);
 
   const sourceNameEl = document.getElementById('sourceName');
   const dispatchDateEl = document.getElementById('dispatchDate');
@@ -43,6 +51,7 @@
     html: '<span class="material-symbols-outlined" style="font-size:28px;line-height:1;color:#ff1a1a;">my_location</span>',
     iconSize: [28, 28],
     iconAnchor: [14, 28],
+    tooltipAnchor: [0, -28],
   });
   const pastGuessIcon = L.divIcon({
     className: 'past-guess-pin',
@@ -61,6 +70,7 @@
   const streakEl = document.getElementById('streakVal');
   const resetPinBtn = document.getElementById('resetPinBtn');
   const gaugeMarkers = document.getElementById('gaugeMarkers');
+  const gaugeHint = document.getElementById('gaugeHint');
   const distanceBadge = document.getElementById('distanceBadge');
 
   function haversineKm(lat1, lon1, lat2, lon2) {
@@ -141,7 +151,7 @@
   }
 
   function clearBoard() {
-    document.getElementById('mapArea').classList.remove('showing-answer');
+    if (map.hasLayer(unlabelledTiles)) { map.removeLayer(unlabelledTiles); labelledTiles.addTo(map); }
     if (guessMarker) { map.removeLayer(guessMarker); guessMarker = null; }
     if (answerMarker) { map.removeLayer(answerMarker); answerMarker = null; }
     if (guessLine) { map.removeLayer(guessLine); guessLine = null; }
@@ -150,6 +160,7 @@
     attempts = [];
     guessLatLng = null;
     gaugeMarkers.innerHTML = '';
+    gaugeHint.classList.remove('compact');
     distanceBadge.classList.add('hidden');
     distanceBadge.textContent = '';
   }
@@ -181,6 +192,7 @@
 
   function renderGauge() {
     gaugeMarkers.innerHTML = '';
+    gaugeHint.classList.toggle('compact', attempts.length > 0);
     attempts.forEach((a, i) => {
       const marker = document.createElement('div');
       marker.className = 'gauge-marker' + (i === attempts.length - 1 ? ' latest' : '');
@@ -216,16 +228,19 @@
 
   function drawResult(story, won, bestKm, guessCount) {
     const last = attempts[attempts.length - 1];
-    document.getElementById('mapArea').classList.add('showing-answer');
+    map.removeLayer(labelledTiles);
+    unlabelledTiles.addTo(map);
     answerMarker = L.marker([story.lat, story.lng], { icon: answerIcon, zIndexOffset: 1000 }).addTo(map);
+    answerMarker.bindTooltip(story.place, {
+      permanent: true, direction: 'top', className: 'answer-label', offset: [0, -4],
+    });
     if (last) {
       guessLine = L.polyline([[last.lat, last.lng], [story.lat, story.lng]], {
         color: '#b8342f', weight: 3, dashArray: '6 6'
       }).addTo(map);
     }
 
-    const bounds = L.latLngBounds([[story.lat, story.lng], ...attempts.map((a) => [a.lat, a.lng])]);
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 9 });
+    map.fitBounds(INDIA_BOUNDS, { padding: [20, 20] });
 
     storyKicker.textContent = 'DISPATCH — LOCATION REVEALED';
     storyText.innerHTML = story.excerpt.replace(/█+/g, `<strong class="revealed">${story.place}</strong>`);

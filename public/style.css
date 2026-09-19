@@ -185,17 +185,22 @@ img { -webkit-user-drag: none; user-select: none; }
 #map {
   width: 100%;
   height: 100%;
-}
-#map .leaflet-tile-pane {
   filter: sepia(0.35) saturate(1.3) hue-rotate(-6deg) brightness(1.03) contrast(0.96);
-  transition: filter 0.4s ease;
-}
-#mapArea.showing-answer #map .leaflet-tile-pane {
-  filter: sepia(0.35) saturate(1.3) hue-rotate(-6deg) brightness(0.8) contrast(0.96);
 }
 .answer-pin {
   z-index: 1000 !important;
-  filter: drop-shadow(0 0 6px rgb(255, 40, 40)) brightness(1);
+}
+.answer-label {
+  font-family: 'Special Elite', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  background: #f1ead8;
+  border: 1px solid #a3906a;
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 #distanceBadge {
   position: absolute;
@@ -269,6 +274,33 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 .gauge-marker.latest .gauge-tri { border-right-color: var(--accent-red); }
 .gauge-marker.latest .gauge-num { color: var(--accent-red); }
+
+#gaugeHint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-family: 'Special Elite', monospace;
+  font-weight: 700;
+  letter-spacing: 0.05cqw;
+  color: var(--ink);
+  opacity: 0.85;
+  pointer-events: none;
+  font-size: 2.6cqw;
+  transition: font-size 0.35s ease, opacity 0.35s ease,
+    top 0.35s ease, bottom 0.35s ease, right 0.35s ease, left 0.35s ease;
+}
+#gaugeHint.compact {
+  inset: auto;
+  right: 0.6cqw;
+  top: 2cqw;
+  bottom: 2cqw;
+  font-size: 0.9cqw;
+  opacity: 0.55;
+}
 
 /* ---------- invisible hotspots over baked-in art ---------- */
 .hotspot {
