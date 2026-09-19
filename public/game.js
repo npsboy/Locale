@@ -72,6 +72,19 @@
   const gaugeMarkers = document.getElementById('gaugeMarkers');
   const gaugeHint = document.getElementById('gaugeHint');
   const distanceBadge = document.getElementById('distanceBadge');
+  const shareBtn = document.getElementById('shareBtn');
+  const shareOverlay = document.getElementById('shareOverlay');
+  const shareCloseBtn = document.getElementById('shareCloseBtn');
+  const shareCanvas = document.getElementById('shareCanvas');
+  const shareStatus = document.getElementById('shareStatus');
+  const shareCopyBtn = document.getElementById('shareCopyBtn');
+  const shareDownloadBtn = document.getElementById('shareDownloadBtn');
+  const shareXBtn = document.getElementById('shareXBtn');
+  const shareFbBtn = document.getElementById('shareFbBtn');
+  const shareIgBtn = document.getElementById('shareIgBtn');
+  const shareNativeBtn = document.getElementById('shareNativeBtn');
+
+  let lastGameSummary = null;
 
   function haversineKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -196,7 +209,10 @@
     attempts.forEach((a, i) => {
       const marker = document.createElement('div');
       marker.className = 'gauge-marker' + (i === attempts.length - 1 ? ' latest' : '');
-      marker.style.top = `${(1 - proximityFor(a.km)) * 100}%`;
+      // proximity: 0 = coldest, 1 = hottest. Desktop's vertical track reads
+      // hot-at-top (top: 100% - pos); mobile's horizontal track reads
+      // hot-at-right (left: pos) — see .gauge-marker rules in style.css.
+      marker.style.setProperty('--pos', `${proximityFor(a.km) * 100}%`);
       marker.title = `Guess ${i + 1}: ${Math.round(a.km).toLocaleString('en-IN')} km away`;
 
       const tri = document.createElement('span');
@@ -277,9 +293,22 @@
     }));
 
     drawResult(story, won, bestKm, guessCount);
+    setShareSummary(story, won, bestKm, guessCount, newStreak);
 
     const storyArea = document.getElementById('storyArea');
     storyArea.scrollTop = storyArea.scrollHeight;
+  }
+
+  function setShareSummary(story, won, bestKm, guessCount, streak) {
+    lastGameSummary = {
+      dateKey: story.dateKey,
+      won,
+      bestKm,
+      guessCount,
+      streak,
+      attempts: attempts.map((a) => ({ km: a.km })),
+    };
+    shareBtn.hidden = false;
   }
 
   function onMapClick(e) {
@@ -339,6 +368,8 @@
     guessBtn.style.display = '';
     resultInline.classList.add('hidden');
     storyText.classList.remove('hidden');
+    shareBtn.hidden = true;
+    lastGameSummary = null;
     setLoadingState('Pulling today\'s real Indian local news dispatch and redacting the place name...');
     clearBoard();
 
@@ -367,7 +398,9 @@
       if (played.finished) {
         locked = true;
         guessBtn.disabled = true;
-        drawResult(dispatch, played.won, played.bestKm, played.guessCount || played.attempts.length);
+        const guessCount = played.guessCount || played.attempts.length;
+        drawResult(dispatch, played.won, played.bestKm, guessCount);
+        setShareSummary(dispatch, played.won, played.bestKm, guessCount, readStreakFor(dispatch.dateKey));
       } else {
         locked = false;
         storyKicker.textContent = dispatch.excerpt ? 'LIVE DISPATCH — LOCATION REDACTED' : '';
@@ -386,6 +419,287 @@
     guessBtn.disabled = true;
     totalScoreEl.textContent = '';
   }
+
+  // ---------- share card ----------
+
+  // Background art supplies its own decorative frame; content is drawn
+  // inside the plain cream panel at roughly these fractions of the image.
+  const SHARE_BG_SRC = 'assets/share_card_bg.png';
+  const shareBgImage = new Image();
+  let shareBgLoaded = false;
+  shareBgImage.addEventListener('load', () => { shareBgLoaded = true; });
+  shareBgImage.src = SHARE_BG_SRC;
+
+  function loadShareBg() {
+    if (shareBgLoaded) return Promise.resolve();
+    return new Promise((resolve) => {
+      shareBgImage.addEventListener('load', () => resolve(), { once: true });
+      shareBgImage.addEventListener('error', () => resolve(), { once: true });
+    });
+  }
+
+  function roundRectPath(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // Shrinks the font until `text` fits within maxWidth, then draws it centered at x/y.
+  function fillFittedText(ctx, text, x, y, maxWidth, maxSize, weight, family) {
+    let size = maxSize;
+    ctx.font = `${weight} ${size}px ${family}`;
+    while (ctx.measureText(text).width > maxWidth && size > 18) {
+      size -= 2;
+      ctx.font = `${weight} ${size}px ${family}`;
+    }
+    ctx.fillText(text, x, y);
+  }
+
+  function drawShareCard(summary) {
+    const ctx = shareCanvas.getContext('2d');
+    const W = shareCanvas.width;
+    const H = shareCanvas.height;
+
+    ctx.clearRect(0, 0, W, H);
+    if (shareBgLoaded) {
+      ctx.drawImage(shareBgImage, 0, 0, W, H);
+    } else {
+      ctx.fillStyle = '#f1ead8';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // safe content area inside the background art's plain cream panel
+    const left = 90;
+    const right = W - 90;
+    const contentW = right - left;
+
+    // title
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#b8342f';
+    ctx.font = "900 68px 'Playfair Display', Georgia, serif";
+    ctx.fillText('LOCALE', W / 2, 150);
+
+    ctx.fillStyle = '#4a4030';
+    ctx.font = "italic 28px 'Special Elite', 'Courier New', monospace";
+    ctx.fillText('Guess the place from the local news snippet.', W / 2, 208);
+
+    // divider between the tagline and the date
+    ctx.strokeStyle = '#b7a980';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - 140, 224);
+    ctx.lineTo(W / 2 + 140, 224);
+    ctx.stroke();
+
+    ctx.font = "24px 'Special Elite', 'Courier New', monospace";
+    ctx.fillText(formatDateKey(summary.dateKey), W / 2, 254);
+
+    // headline result
+    const verdict = summary.won
+      ? { label: `Solved in ${summary.guessCount}/${MAX_ATTEMPTS} guesses`, color: '#2f7a3d' }
+      : { label: `Missed it — best ${Math.round(summary.bestKm).toLocaleString('en-IN')} km away`, color: '#b8342f' };
+    ctx.fillStyle = verdict.color;
+    fillFittedText(ctx, verdict.label, W / 2, 299, contentW - 40, 36, 800, "'Playfair Display', Georgia, serif");
+
+    ctx.font = "700 26px 'Special Elite', monospace";
+    ctx.fillStyle = '#201d16';
+    ctx.fillText(`Streak: ${summary.streak} day${summary.streak === 1 ? '' : 's'}`, W / 2, 337);
+
+    // "my guesses" ladder: one self-contained row per attempt, each with
+    // its own mini hot/cold track + pointer + distance, so every guess is
+    // readable on its own instead of crowding markers onto a single track.
+    ctx.textAlign = 'left';
+    ctx.font = "700 20px 'Special Elite', monospace";
+    ctx.fillStyle = '#4a4030';
+    ctx.fillText('MY GUESSES', left, 378);
+
+    const badgeR = 24;
+    const trackX = left + 62;
+    const trackRight = right - 130;
+    const trackW = trackRight - trackX;
+    const trackH = 14;
+    const rowH = 88;
+    const rowsTop = 415;
+
+    ctx.textAlign = 'left';
+    ctx.font = "700 16px 'Special Elite', monospace";
+    ctx.fillStyle = '#8a7c5e';
+    ctx.fillText('COLD', trackX, rowsTop - 14);
+    ctx.textAlign = 'right';
+    ctx.fillText('HOT', trackRight, rowsTop - 14);
+
+    summary.attempts.forEach((a, i) => {
+      const rowY = rowsTop + i * rowH;
+      const centerY = rowY + badgeR;
+      const isLast = i === summary.attempts.length - 1;
+
+      // number badge
+      ctx.beginPath();
+      ctx.arc(left + badgeR, centerY, badgeR, 0, Math.PI * 2);
+      ctx.fillStyle = isLast ? '#b8342f' : '#201d16';
+      ctx.fill();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f1ead8';
+      ctx.font = "700 22px 'Special Elite', monospace";
+      ctx.fillText(String(i + 1), left + badgeR, centerY + 8);
+
+      // mini gradient track for this guess — blue (cold/far) on the left,
+      // red (hot/close) on the right, matching where the pointer below
+      // actually lands (proximity 0 -> trackX, proximity 1 -> trackRight)
+      const grad = ctx.createLinearGradient(trackX, 0, trackRight, 0);
+      grad.addColorStop(0, '#2fc2e0');
+      grad.addColorStop(0.5, '#ffb020');
+      grad.addColorStop(1, '#ff4433');
+      ctx.fillStyle = grad;
+      roundRectPath(ctx, trackX, centerY - trackH / 2, trackW, trackH, trackH / 2);
+      ctx.fill();
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 1.5;
+      roundRectPath(ctx, trackX, centerY - trackH / 2, trackW, trackH, trackH / 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // pointer at this guess's position on the track
+      const px = trackX + proximityFor(a.km) * trackW;
+      ctx.beginPath();
+      ctx.arc(px, centerY, 11, 0, Math.PI * 2);
+      ctx.fillStyle = '#201d16';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(px, centerY, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#f1ead8';
+      ctx.fill();
+
+      // distance label, color-coded to match the in-game verdict tone
+      const tone = verdictFor(a.km).tone;
+      ctx.fillStyle = tone === 'good' ? '#2f7a3d' : tone === 'mid' ? '#b8860b' : '#b8342f';
+      ctx.textAlign = 'right';
+      ctx.font = "700 24px 'Special Elite', monospace";
+      ctx.fillText(`${Math.round(a.km).toLocaleString('en-IN')} km`, right, centerY + 8);
+    });
+
+    // footer
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#8a7c5e';
+    ctx.font = "20px 'Special Elite', monospace";
+    ctx.fillText(`Play at ${window.location.host || 'whereinindia'}`, W / 2, H - 85);
+  }
+
+  async function canvasToBlob() {
+    return new Promise((resolve) => shareCanvas.toBlob(resolve, 'image/png'));
+  }
+
+  function shareText() {
+    const s = lastGameSummary;
+    if (!s) return '';
+    const result = s.won
+      ? `I solved today's Locale in ${s.guessCount}/${MAX_ATTEMPTS} guesses`
+      : `Today's Locale got me — best guess was ${Math.round(s.bestKm).toLocaleString('en-IN')} km away`;
+    return `${result}. Streak: ${s.streak} day${s.streak === 1 ? '' : 's'}. Can you beat me?`;
+  }
+
+  async function openShareOverlay() {
+    if (!lastGameSummary) return;
+    shareStatus.textContent = '';
+    shareOverlay.classList.remove('hidden');
+    await loadShareBg();
+    if (!lastGameSummary) return;
+    drawShareCard(lastGameSummary);
+
+    const canShareFiles = !!(navigator.canShare && navigator.share);
+    shareNativeBtn.hidden = !canShareFiles;
+  }
+
+  function closeShareOverlay() {
+    shareOverlay.classList.add('hidden');
+  }
+
+  shareBtn.addEventListener('click', openShareOverlay);
+  shareCloseBtn.addEventListener('click', closeShareOverlay);
+  shareOverlay.addEventListener('click', (e) => {
+    if (e.target === shareOverlay) closeShareOverlay();
+  });
+
+  shareCopyBtn.addEventListener('click', async () => {
+    try {
+      const blob = await canvasToBlob();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      shareStatus.textContent = 'Image copied to clipboard!';
+    } catch (err) {
+      shareStatus.textContent = 'Could not copy — try Download instead.';
+    }
+  });
+
+  shareDownloadBtn.addEventListener('click', async () => {
+    const blob = await canvasToBlob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `where-in-india-${lastGameSummary.dateKey}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+    shareStatus.textContent = 'Image downloaded!';
+  });
+
+  async function copyImageQuietly() {
+    try {
+      const blob = await canvasToBlob();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  shareXBtn.addEventListener('click', async () => {
+    const copied = await copyImageQuietly();
+    shareStatus.textContent = copied ? 'Image copied — paste it into your post!' : '';
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText())}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  });
+
+  shareFbBtn.addEventListener('click', async () => {
+    const copied = await copyImageQuietly();
+    shareStatus.textContent = copied ? 'Image copied — paste it into your post!' : '';
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText())}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  });
+
+  shareIgBtn.addEventListener('click', async () => {
+    if (navigator.canShare && navigator.share) {
+      try {
+        const blob = await canvasToBlob();
+        const file = new File([blob], `where-in-india-${lastGameSummary.dateKey}.png`, { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Locale', text: shareText() });
+          return;
+        }
+      } catch (err) {
+        // fall through to manual instructions
+      }
+    }
+    const copied = await copyImageQuietly();
+    shareStatus.textContent = copied
+      ? 'Image copied! Open Instagram and paste it into your story.'
+      : 'Download the image, then share it on Instagram.';
+  });
+
+  shareNativeBtn.addEventListener('click', async () => {
+    try {
+      const blob = await canvasToBlob();
+      const file = new File([blob], `where-in-india-${lastGameSummary.dateKey}.png`, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Locale', text: shareText() });
+      }
+    } catch (err) {
+      // user cancelled or share unsupported — no-op
+    }
+  });
 
   startGame();
 })();

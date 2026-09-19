@@ -251,6 +251,7 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 .gauge-marker {
   position: absolute;
+  top: calc(100% - var(--pos, 0%));
   left: 1.85cqw;
   display: flex;
   align-items: center;
@@ -334,14 +335,125 @@ img { -webkit-user-drag: none; user-select: none; }
 #zoomOutBtn { left: 50.88%; top: 33.13%; width: 2.06%; height: 3.96%; }
 #resetPinBtn { left: 75.45%; top: 23.3%; width: 5.77%; height: 4.08%; }
 #guessBtn {
-  left: 58.45%; top: 81.58%; width: 12.62%; height: 5.56%;
+  left: 58.3%; top: 82%; width: 13%; height: 6%;
+  border: none;
   border-radius: 6px;
+  background: #1a1a1a;
+  box-shadow: 1px 2px 0 rgba(0,0,0,0.35);
+  font-family: 'Special Elite', monospace;
+  font-weight: 700;
+  font-size: 1.05cqw;
+  color: #f1ead8;
+  cursor: pointer;
+  z-index: 6;
 }
+#guessBtn:hover { background: #2c2c2c; }
+#guessBtn:active { background: #000; }
 #guessBtn:disabled {
   cursor: not-allowed;
-  background: rgba(230,225,215,0.55);
+  background: #55524c;
+  color: #b8b4aa;
 }
-#guessBtn:disabled:hover { background: rgba(230,225,215,0.55); }
+#guessBtn:disabled:hover { background: #55524c; }
+
+/* ---------- share button ---------- */
+#shareBtn {
+  left: 58.3%; top: 81.5%; width: 13%; height: 6.6%;
+  border-radius: 6px;
+  background: #f1ead8;
+  border: 1px solid #a3906a;
+  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.2);
+  font-family: 'Special Elite', monospace;
+  font-weight: 700;
+  font-size: 1.05cqw;
+  color: var(--accent-red);
+  cursor: pointer;
+  z-index: 6;
+}
+#shareBtn:hover { background: #fff8e8; }
+#shareBtn[hidden] { display: none; }
+
+/* ---------- share overlay ---------- */
+#shareOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20, 16, 8, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
+  overflow-y: auto;
+}
+#shareOverlay.hidden { display: none; }
+#shareOverlayInner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 480px;
+  width: 100%;
+  margin: auto;
+}
+#shareCloseBtn {
+  position: absolute;
+  top: -44px;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(241, 234, 216, 0.5);
+  background: rgba(241, 234, 216, 0.12);
+  color: #f1ead8;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+#shareCloseBtn:hover { background: rgba(241, 234, 216, 0.25); }
+#shareCanvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  background: #f1ead8;
+}
+#shareStatus {
+  min-height: 1.2em;
+  font-family: 'Special Elite', monospace;
+  font-size: 13px;
+  color: #f1ead8;
+  opacity: 0.85;
+}
+#shareActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.share-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Special Elite', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  background: #e5cfb0;
+  border: 1px solid #a3906a;
+  border-radius: 6px;
+  padding: 9px 16px;
+  cursor: pointer;
+  box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+.share-action-btn:hover { background: #efdcc0; }
+.share-action-btn[hidden] { display: none; }
+.share-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
 
 /* ---------- score / streak ---------- */
 .stat-value {
@@ -362,3 +474,183 @@ img { -webkit-user-drag: none; user-select: none; }
   font-weight: 100;
 }
 #streakVal { left: 78%; top: 16.44%; width: 4.12%; height: 5.07%; }
+
+/* =========================================================
+   MOBILE LAYOUT — separate portrait background + overlay grid
+
+   The mobile background (887x1774) is deliberately taller than any
+   phone viewport, with decorative newspaper bleed at the very top and
+   bottom. #stage is sized to the IMAGE's own aspect ratio (not the
+   viewport's) and always spans the full width, so it never crops
+   horizontally; #stageWrap then clips it top/bottom to the actual
+   viewport height. Narrower/shorter aspect ratios crop more of the
+   decorative bleed; taller phones show more (or all) of it, falling
+   back to a plain letterboxed edge if the image is shorter than the
+   viewport at that width.
+   ========================================================= */
+@media (max-width: 700px) {
+  #stage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100vw;
+    aspect-ratio: 887 / 1774;
+    container-type: inline-size;
+  }
+
+  /* ---------- source / date ----------
+     sits inside the story card's own paper background (as a dateline
+     above the kicker) rather than floating over the busy decorative
+     clippings above the card, where it had no clean surface to read
+     against and could spill outside any sensible box. */
+  #sourceName {
+    left: 12.5%;
+    top: 30.6%;
+    width: 32%;
+    height: 2%;
+    font-size: 2.6cqw;
+    line-height: 1.2;
+    z-index: 2;
+  }
+  #dispatchDate {
+    left: 45%;
+    top: 30.65%;
+    width: 26%;
+    height: 1.9%;
+    font-size: 2.1cqw;
+    z-index: 2;
+  }
+
+  /* ---------- story card ---------- */
+  #storyArea {
+    left: 14.5%;
+    top: 30%;
+    width: 77.5%;
+    height: 18.4%;
+    /* horizontal/bottom padding in cqw (not %) since padding-% resolves
+       against the box's WIDTH, not height. No top padding here — the
+       ::before spacer below reserves that space instead. */
+    padding: 0 1.5% 2.5%;
+    z-index: 1;
+  }
+  /* padding-top would scroll away with the content, so on scroll story
+     text would slide up through the reserved dateline zone and show
+     through (storyArea stacks above #sourceName/#dispatchDate in DOM
+     order). Use a sticky, opaque spacer instead so it stays put and
+     covers the zone regardless of scroll position. */
+  #storyArea::before {
+    content: '';
+    display: block;
+    flex-shrink: 0;
+    order: -1;
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 6.8cqw;
+    background: #e8dcce;
+  }
+  .story-kicker { font-size: 2.1cqw; margin-bottom: 2.5%; }
+  #storyText { font-size: 3.2cqw; line-height: 1.42; }
+  #resultInline { margin-top: 4%; padding-top: 4%; }
+  #resultHeadline { font-size: 3.5cqw; }
+  #resultDetail { font-size: 2.6cqw; }
+
+  /* ---------- map ---------- */
+  #mapArea {
+    left: 7%;
+    top: 53.9%;
+    width: 86%;
+    height: 21.9%;
+  }
+  #distanceBadge { font-size: 2.6cqw; padding: 1.3cqw 2.2cqw; }
+
+  /* ---------- baked-in map controls ---------- */
+  #zoomInBtn, #zoomOutBtn { font-size: 3.6cqw; }
+  #zoomInBtn { left: 10%; top: 54.6%; width: 5%; height: 3.3%; }
+  #zoomOutBtn { left: 10%; top: 58.3%; width: 5%; height: 3.3%; }
+  #resetPinBtn { left: 73%; top: 51%; width: 18.5%; height: 2.8%; }
+  #guessBtn, #shareBtn { left: 32%; top: 76.6%; width: 36.5%; height: 4.2%; font-size: 3cqw; }
+
+  /* ---------- score / streak ----------
+     the numeric value sits in the blank strip below the baked
+     "Score"/"Streak" labels, not on top of them */
+  .stat-value { font-size: 2.4cqw; }
+  #totalScore {
+    left: 73%; top: 28.9%; width: 10%; height: 2.2%;
+    font-size: 1.7cqw;
+  }
+  #streakVal { left: 84.5%; top: 28.9%; width: 8.5%; height: 2.2%; }
+
+  /* ---------- proximity gauge — horizontal, below the map + submit
+     button. The mobile background has no baked art for this, so it
+     gets its own paper-card face to read clearly over the decorative
+     clippings behind it. ---------- */
+  #gaugeWrap {
+    left: 8%;
+    top: 83%;
+    width: 84%;
+    height: 8.4%;
+    border-radius: 8px;
+  }
+  #gaugeHint {
+    writing-mode: horizontal-tb;
+    text-orientation: initial;
+    letter-spacing: 0;
+    inset: auto;
+    left: 0;
+    right: 0;
+    top: 0.5cqw;
+    bottom: auto;
+    font-size: 2.6cqw;
+  }
+  #gaugeHint.compact {
+    inset: auto;
+    left: 0;
+    right: 0;
+    top: 0.5cqw;
+    bottom: auto;
+    font-size: 2cqw;
+    opacity: 0.6;
+  }
+  /* track sits partway up the strip (not flush with the bottom edge);
+     markers stack a number and a downward-pointing triangle above
+     their spot on the track */
+  #gaugeTrack {
+    left: 3cqw;
+    right: 3cqw;
+    top: auto;
+    bottom: 4.2cqw;
+    width: auto;
+    height: 1cqw;
+    border-radius: 3px;
+    background: linear-gradient(to right, #2fc2e0, #ffb020, #ff4433);
+  }
+  #gaugeMarkers {
+    left: 3cqw;
+    right: 3cqw;
+    top: 0.3cqw;
+    bottom: 4.2cqw;
+  }
+  .gauge-marker {
+    position: absolute;
+    left: var(--pos, 0%);
+    top: auto;
+    bottom: 0;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 0.3cqw;
+    transform: translateX(-50%);
+  }
+  .gauge-tri {
+    width: 0;
+    height: 0;
+    border-left: 0.55cqw solid transparent;
+    border-right: 0.55cqw solid transparent;
+    border-top: 0.85cqw solid var(--ink);
+    border-bottom: none;
+  }
+  .gauge-marker.latest .gauge-tri { border-top-color: var(--accent-red); }
+  .gauge-num { font-size: 2.8cqw; }
+}
