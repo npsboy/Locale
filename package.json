@@ -2,9 +2,8 @@
   "name": "locale",
   "version": "1.0.0",
   "description": "GeoGuessr-style game: guess the Indian town behind a redacted live local news dispatch.",
-  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "dev": "vercel dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,10 +11,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@upstash/redis": "^1.38.4",
     "adm-zip": "^0.6.1",
     "cheerio": "^1.2.0",
     "compromise": "^14.17.0",
-    "express": "^5.2.1",
     "fast-xml-parser": "^5.11.1"
   }
 }

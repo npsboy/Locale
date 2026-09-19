@@ -1,0 +1,11 @@
+{
+  "crons": [
+    { "path": "/api/cron/generate-daily", "schedule": "30 0 * * *" },
+    { "path": "/api/cron/retry-daily", "schedule": "30 1 * * *" }
+  ],
+  "functions": {
+    "api/cron/generate-daily.js": { "maxDuration": 60 },
+    "api/cron/retry-daily.js": { "maxDuration": 60 },
+    "api/dispatch.js": { "maxDuration": 60 }
+  }
+}
