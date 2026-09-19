@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Where in India?</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📍</text></svg>" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Special+Elite&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="stageWrap">
+    <div id="stage">
+      <img id="bgImage" src="assets/game_background.png" alt="" />
+
+      <!-- source / date row -->
+      <div class="ov" id="sourceName">The Hindu</div>
+      <div class="ov" id="dispatchDate">14 September 2026</div>
+
+      <!-- story card -->
+      <div class="ov" id="storyArea">
+        <div class="story-kicker" id="storyKicker">LIVE DISPATCH — LOCATION REDACTED</div>
+        <div id="storyText">Loading a mysterious dispatch...</div>
+        <div id="resultInline" class="hidden">
+          <div id="resultHeadline"></div>
+          <div id="resultDetail"></div>
+          <button id="nextBtn">Next dispatch →</button>
+        </div>
+      </div>
+
+      <!-- map -->
+      <div class="ov" id="mapArea">
+        <div id="map"></div>
+      </div>
+
+      <!-- invisible hotspots over the baked-in buttons -->
+      <button class="ov hotspot" id="zoomInBtn" aria-label="Zoom in"></button>
+      <button class="ov hotspot" id="zoomOutBtn" aria-label="Zoom out"></button>
+      <button class="ov hotspot" id="resetPinBtn" aria-label="Reset pin"></button>
+      <button class="ov hotspot" id="guessBtn" disabled aria-label="Submit guess"></button>
+
+      <!-- score / streak -->
+      <div class="ov stat-value" id="totalScore">0</div>
+      <div class="ov stat-value" id="streakVal">0</div>
+    </div>
+  </div>
+
+  <div id="endScreen" class="hidden">
+    <div id="endCard">
+      <h1 id="endTitle">Game Over!</h1>
+      <p id="endScore"></p>
+      <p id="endFlavor"></p>
+      <button id="restartBtn">Play again</button>
+    </div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

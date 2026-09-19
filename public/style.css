@@ -1,0 +1,305 @@
+:root {
+  --ink: #201d16;
+  --accent-red: #b8342f;
+  --good: #2f7a3d;
+  --bad: #b8342f;
+  --mid: #b8860b;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Special Elite', 'Courier New', monospace;
+  color: var(--ink);
+  background: #d8c9a8;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+img { -webkit-user-drag: none; user-select: none; }
+
+#stageWrap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Fill the viewport ("cover" behaviour) and crop the excess off both
+   sides — but cap how much gets cropped so it never eats into real
+   controls. The rightmost hotspot (#resetPinBtn) sits at 83.3% and the
+   leftmost content (#storyArea) starts at 24.6%, so the image has ~16.7%
+   of pure decoration to sacrifice on the right before anything
+   functional would be clipped (the left side has even more slack).
+   Capping the crop at 15% per side stays safely inside that margin.
+   On screens narrower than that cap allows (e.g. a near-square window),
+   we fall back to a thin top/bottom letterbox instead of cropping
+   further, rather than clipping the Score/Streak/Reset Pin controls. */
+#stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(max(100vw, calc(100vh * 1942 / 809)), calc(100vw / 0.7));
+  aspect-ratio: 1942 / 809;
+  container-type: inline-size;
+}
+
+#bgImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.ov { position: absolute; }
+
+/* ---------- source / date ---------- */
+#sourceName {
+  left: 24.98%;
+  top: 21.63%;
+  width: 15.7%;
+  height: 4.94%;
+  display: block;
+  line-height: 1.5;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 900;
+  font-size: 1.6cqw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#dispatchDate {
+  left: 39.8%;
+  top: 22.25%;
+  width: 8.3%;
+  height: 4.08%;
+  display: block;
+  line-height: 1.8;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85cqw;
+  color: #4a4030;
+}
+
+/* ---------- story card ---------- */
+#storyArea {
+  left: 24.61%;
+  top: 27.69%;
+  width: 22.97%;
+  height: 58.59%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.4% 0.6% 4cqw;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #a3906a transparent;
+}
+#storyArea::-webkit-scrollbar {
+  width: 6px;
+}
+#storyArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+#storyArea::-webkit-scrollbar-thumb {
+  background: #a3906a;
+  border-radius: 3px;
+}
+#storyArea::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+.story-kicker {
+  font-size: 0.72cqw;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent-red);
+  margin-bottom: 2.2%;
+  flex-shrink: 0;
+}
+#storyText {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.25cqw;
+  line-height: 1.55;
+  margin: 0;
+}
+#storyText strong {
+  background: var(--ink);
+  color: var(--ink);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+#storyText strong.revealed {
+  background: none;
+  color: var(--accent-red);
+  padding: 0;
+}
+
+#resultInline {
+  margin-top: 4%;
+  padding-top: 4%;
+  border-top: 2px dashed #b7a980;
+  flex-shrink: 0;
+}
+#resultInline.hidden { display: none; }
+#resultHeadline {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.35cqw;
+  font-weight: 800;
+  margin-bottom: 1.5%;
+}
+#resultDetail {
+  font-size: 0.95cqw;
+  line-height: 1.5;
+  margin-bottom: 3%;
+  color: #3a3225;
+}
+#resultDetail a { color: var(--accent-red); }
+.score-pop { font-weight: 800; color: var(--accent-red); }
+
+#nextBtn {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.95cqw;
+  font-weight: 700;
+  padding: 2.2% 4%;
+  border-radius: 6px;
+  border: none;
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 2px 3px 0 rgba(0,0,0,0.25);
+}
+#nextBtn:hover { transform: translate(-1px, -1px); }
+
+/* ---------- map ---------- */
+#mapArea {
+  left: 50.4%;
+  top: 27.81%;
+  width: 31%;
+  height: 53.15%;
+  overflow: hidden;
+}
+#map {
+  width: 100%;
+  height: 100%;
+  filter: sepia(0.35) saturate(1.3) hue-rotate(-6deg) brightness(1.03) contrast(0.96);
+}
+
+/* ---------- invisible hotspots over baked-in art ---------- */
+.hotspot {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.hotspot:hover { background: rgba(255,255,255,0.12); }
+.hotspot:active { background: rgba(0,0,0,0.08); }
+
+/* the live map div sits over the baked-in +/- artwork, so these need
+   their own visible face instead of just being a transparent hotspot */
+#zoomInBtn, #zoomOutBtn {
+  background: #f1ead8;
+  border: 1px solid #a3906a;
+  border-radius: 3px;
+  box-shadow: 1px 2px 0 rgba(0,0,0,0.2);
+  font-family: 'Special Elite', monospace;
+  font-weight: 700;
+  font-size: 1.3cqw;
+  color: var(--ink);
+  line-height: 1;
+  z-index: 5;
+}
+#zoomInBtn:hover, #zoomOutBtn:hover { background: #fff8e8; }
+#zoomInBtn::before { content: '+'; }
+#zoomOutBtn::before { content: '\2212'; }
+
+#zoomInBtn { left: 50.88%; top: 28.18%; width: 2.06%; height: 3.96%; }
+#zoomOutBtn { left: 50.88%; top: 33.13%; width: 2.06%; height: 3.96%; }
+#resetPinBtn { left: 77.39%; top: 22.87%; width: 5.87%; height: 3.96%; }
+#guessBtn {
+  left: 58.45%; top: 81.58%; width: 12.62%; height: 5.56%;
+  border-radius: 6px;
+}
+#guessBtn:disabled {
+  cursor: not-allowed;
+  background: rgba(230,225,215,0.55);
+}
+#guessBtn:disabled:hover { background: rgba(230,225,215,0.55); }
+
+/* ---------- score / streak ---------- */
+.stat-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 1.4cqw;
+  line-height: 1;
+}
+#totalScore { left: 73.8%; top: 16.44%; width: 4.17%; height: 5.07%; }
+#streakVal { left: 78%; top: 16.44%; width: 4.12%; height: 5.07%; }
+
+/* ---------- end screen ---------- */
+#endScreen {
+  position: fixed;
+  inset: 0;
+  background: rgba(32, 29, 22, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+#endScreen.hidden { display: none; }
+
+#endCard {
+  background: #f6ecd9;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  max-width: 480px;
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.3);
+}
+#endTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  margin: 0 0 12px;
+}
+#endScore {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent-red);
+  margin: 0 0 8px;
+}
+#endFlavor {
+  font-size: 15px;
+  color: #4a4030;
+  margin-bottom: 22px;
+}
+#restartBtn {
+  font-family: 'Special Elite', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  background: #201d16;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 2px 3px 0 rgba(0,0,0,0.2);
+}
+#restartBtn:hover { transform: translate(-2px, -2px); }
