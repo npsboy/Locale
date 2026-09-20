@@ -76,6 +76,7 @@
   const shareBtn = document.getElementById('shareBtn');
   const shareOverlay = document.getElementById('shareOverlay');
   const shareCloseBtn = document.getElementById('shareCloseBtn');
+  const shareResultHeading = document.getElementById('shareResultHeading');
   const shareCanvas = document.getElementById('shareCanvas');
   const shareStatus = document.getElementById('shareStatus');
   const shareCopyBtn = document.getElementById('shareCopyBtn');
@@ -298,6 +299,8 @@
 
     const storyArea = document.getElementById('storyArea');
     storyArea.scrollTop = storyArea.scrollHeight;
+
+    setTimeout(openShareOverlay, 2000);
   }
 
   function setShareSummary(story, won, bestKm, guessCount, streak) {
@@ -402,6 +405,7 @@
         const guessCount = played.guessCount || played.attempts.length;
         drawResult(dispatch, played.won, played.bestKm, guessCount);
         setShareSummary(dispatch, played.won, played.bestKm, guessCount, readStreakFor(dispatch.dateKey));
+        openShareOverlay();
       } else {
         locked = false;
         storyKicker.textContent = dispatch.excerpt ? 'LIVE DISPATCH — LOCATION REDACTED' : '';
@@ -606,6 +610,7 @@
 
   async function openShareOverlay() {
     if (!lastGameSummary) return;
+    shareResultHeading.textContent = lastGameSummary.won ? 'Congratulations!' : 'Good attempt!';
     shareStatus.textContent = '';
     shareOverlay.classList.remove('hidden');
     await loadShareBg();
