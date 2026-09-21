@@ -63,6 +63,7 @@
 
   const storyText = document.getElementById('storyText');
   const storyKicker = document.getElementById('storyKicker');
+  const redactionKey = document.getElementById('redactionKey');
   const guessBtn = document.getElementById('guessBtn');
   const resultInline = document.getElementById('resultInline');
   const resultHeadline = document.getElementById('resultHeadline');
@@ -229,6 +230,18 @@
     });
   }
 
+  // Two placeholder glyphs come back from the server: solid blocks for the
+  // actual place name, and a lighter block for any old/colonial-era name
+  // (e.g. "Madras") found in the same story — see redactAliases in
+  // lib/newswire.js. Render them in visually distinct colors and only show
+  // the legend when the excerpt actually contains an alias block.
+  function renderRedactedExcerpt(excerpt) {
+    storyText.innerHTML = excerpt
+      .replace(/█+/g, '<strong>██████</strong>')
+      .replace(/▓+/g, '<strong class="alias">▓▓▓▓▓▓</strong>');
+    redactionKey.classList.toggle('hidden', !excerpt.includes('▓'));
+  }
+
   function updateAttemptsUI() {
     const left = MAX_ATTEMPTS - attempts.length;
     storyKicker.textContent = `LIVE DISPATCH — LOCATION REDACTED (${left} guess${left === 1 ? '' : 'es'} left)`;
@@ -261,7 +274,10 @@
     map.fitBounds(INDIA_BOUNDS, { padding: [20, 20] });
 
     storyKicker.textContent = 'DISPATCH — LOCATION REVEALED';
-    storyText.innerHTML = story.excerpt.replace(/█+/g, `<strong class="revealed">${story.place}</strong>`);
+    redactionKey.classList.add('hidden');
+    storyText.innerHTML = story.excerpt
+      .replace(/█+/g, `<strong class="revealed">${story.place}</strong>`)
+      .replace(/▓+/g, `<strong class="revealed alias">${story.aliasPlace || ''}</strong>`);
 
     const sourceLine = story.link
       ? ` <a href="${story.link}" target="_blank" rel="noopener noreferrer">Read the real story${story.source ? ` (${story.source})` : ''} →</a>`
@@ -362,6 +378,7 @@
 
   function showNoPuzzle() {
     storyKicker.textContent = 'NO DISPATCH TODAY';
+    redactionKey.classList.add('hidden');
     sourceNameEl.textContent = '';
     storyText.textContent = "Today's puzzle isn't ready yet — check back soon.";
     guessBtn.disabled = true;
@@ -409,7 +426,7 @@
       } else {
         locked = false;
         storyKicker.textContent = dispatch.excerpt ? 'LIVE DISPATCH — LOCATION REDACTED' : '';
-        storyText.innerHTML = dispatch.excerpt.replace(/█+/g, '<strong>██████</strong>');
+        renderRedactedExcerpt(dispatch.excerpt);
         guessBtn.onclick = submitGuess;
         guessBtn.disabled = true;
         updateAttemptsUI();
@@ -419,7 +436,7 @@
 
     locked = false;
     storyKicker.textContent = `LIVE DISPATCH — LOCATION REDACTED (${MAX_ATTEMPTS} guesses left)`;
-    storyText.innerHTML = dispatch.excerpt.replace(/█+/g, '<strong>██████</strong>');
+    renderRedactedExcerpt(dispatch.excerpt);
     guessBtn.onclick = submitGuess;
     guessBtn.disabled = true;
     totalScoreEl.textContent = '';
