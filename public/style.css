@@ -557,9 +557,17 @@ img { -webkit-user-drag: none; user-select: none; }
      clippings above the card, where it had no clean surface to read
      against and could spill outside any sensible box. */
   #sourceName {
-    left: 12.5%;
-    top: 30.6%;
-    width: 32%;
+    /* storyArea's left (14.5%) plus its own 1.5%-of-stage left padding
+       puts the card's text column at ~16% — this was sitting at 12.5%,
+       i.e. actually to the left of the card's own left edge, hanging
+       off its paper background. Right edge (left+width) kept the same
+       so it still clears #dispatchDate by the same margin as before. */
+    left: 16%;
+    /* kept in step with #storyArea's top below — see that rule's comment.
+       This must stay inside the card's paper background (that's the
+       whole point of the comment above), not float independently. */
+    top: 31.8%;
+    width: 28.5%;
     height: 2%;
     font-size: 2.6cqw;
     line-height: 1.2;
@@ -567,7 +575,7 @@ img { -webkit-user-drag: none; user-select: none; }
   }
   #dispatchDate {
     left: 45%;
-    top: 30.65%;
+    top: 31.85%;
     width: 26%;
     height: 1.9%;
     font-size: 2.1cqw;
@@ -577,9 +585,17 @@ img { -webkit-user-drag: none; user-select: none; }
   /* ---------- story card ---------- */
   #storyArea {
     left: 14.5%;
-    top: 30%;
+    /* top is nudged below the score/streak numbers' bottom edge (28.9% +
+       2.2% = 31.1%) so this card's z-index:1 paint layer — which the
+       score/streak values (z-index:auto) lose to in stacking order even
+       though they're later in DOM — never clips them. height shrinks by
+       the same amount so the card's bottom (and the map below it) stays
+       put. #sourceName/#dispatchDate above are shifted down by this same
+       amount so they stay inside this card's paper background instead of
+       floating above it over the bare decorative clippings. */
+    top: 31.2%;
     width: 77.5%;
-    height: 18.4%;
+    height: 17.2%;
     /* horizontal/bottom padding in cqw (not %) since padding-% resolves
        against the box's WIDTH, not height. No top padding here — the
        ::before spacer below reserves that space instead. */
